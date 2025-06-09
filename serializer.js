@@ -22,7 +22,7 @@ function bitMaskToNumbers(bitMask) {
   return numbers;
 }
 
-function serialize(numbers, encoderType = "ascii85", maxNumber = MAX_NUMBER) {
+function serialize(numbers, encoderType = "runLength", maxNumber = MAX_NUMBER) {
   if (!numbers || numbers.length === 0) {
     return "";
   }
@@ -39,7 +39,7 @@ function serialize(numbers, encoderType = "ascii85", maxNumber = MAX_NUMBER) {
   return encoded;
 }
 
-function deserialize(encoded, encoderType = "ascii85", maxNumber = MAX_NUMBER) {
+function deserialize(encoded, encoderType = "runLength", maxNumber = MAX_NUMBER) {
   const encoder = encoders[encoderType];
   if (!encoder) {
     throw new Error(`Unknown encoder type: ${encoderType}`);
