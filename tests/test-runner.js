@@ -2,12 +2,6 @@ const { serialize, deserialize } = require("../serializer");
 const { calculateCompressionRatio } = require("./test-utils");
 
 function runTest(testName, numbers, encoderType = "runLength") {
-  console.log(`\n=== ${testName} ===`);
-  console.log(
-    `Исходные числа (${numbers.length}):`,
-    numbers.slice(0, 10).join(", ") + (numbers.length > 10 ? "..." : "")
-  );
-
   const serialized = serialize(numbers, encoderType);
   const deserialized = deserialize(serialized, encoderType);
 
@@ -22,24 +16,28 @@ function runTest(testName, numbers, encoderType = "runLength") {
 
   const compressionRatio = calculateCompressionRatio(numbers, serialized);
 
-  console.log(`Сжатая строка: "${serialized}"`);
-  console.log(`Корректность: ${isCorrect ? "✓" : "✗"}`);
+  const status = isCorrect ? "✓" : "✗";
+  console.log(
+    `    ${status} ${compressionRatio}% | Размер: ${
+      JSON.stringify(numbers).length
+    } → ${serialized.length} символов`
+  );
+
   if (!isCorrect) {
-    console.log(`  ⚠️  Множества не совпадают:`);
+    console.log(`    ⚠️  Ошибка: Множества не совпадают`);
     console.log(
-      `     Исходное: {${[...originalSet].sort((a, b) => a - b).join(", ")}}`
+      `       Исходное: {${[...originalSet]
+        .sort((a, b) => a - b)
+        .slice(0, 10)
+        .join(", ")}${originalSet.size > 10 ? "..." : ""}}`
     );
     console.log(
-      `     Получено: {${[...deserializedSet]
+      `       Получено: {${[...deserializedSet]
         .sort((a, b) => a - b)
-        .join(", ")}}`
+        .slice(0, 10)
+        .join(", ")}${deserializedSet.size > 10 ? "..." : ""}}`
     );
   }
-  console.log(
-    `Размер исходных данных: ${JSON.stringify(numbers).length} символов`
-  );
-  console.log(`Размер сжатых данных: ${serialized.length} символов`);
-  console.log(`Коэффициент сжатия: ${compressionRatio}%`);
 
   return {
     testName,
@@ -54,15 +52,6 @@ function runTest(testName, numbers, encoderType = "runLength") {
 function printStatistics(results) {
   console.log("\n📊 ИТОГОВАЯ СТАТИСТИКА");
   const correctTests = results.filter((r) => r.isCorrect).length;
-  const avgCompression = (
-    results.reduce((sum, r) => sum + r.compressionRatio, 0) / results.length
-  ).toFixed(1);
-  const minCompression = Math.min(
-    ...results.map((r) => r.compressionRatio)
-  ).toFixed(1);
-  const maxCompression = Math.max(
-    ...results.map((r) => r.compressionRatio)
-  ).toFixed(1);
 
   console.log(`Всего тестов: ${results.length}`);
   console.log(
@@ -71,27 +60,124 @@ function printStatistics(results) {
       100
     ).toFixed(1)}%)`
   );
-  console.log(`Среднее сжатие: ${avgCompression}%`);
-  console.log(`Минимальное сжатие: ${minCompression}%`);
-  console.log(`Максимальное сжатие: ${maxCompression}%`);
+}
 
-  // Лучшие результаты сжатия
-  const bestCompression = results
-    .filter((r) => r.isCorrect)
-    .sort((a, b) => b.compressionRatio - a.compressionRatio)
-    .slice(0, 5);
+function printComparativeStatistics(results, encoders) {
+  console.log("\n" + "=".repeat(60));
+  console.log("🏆 СРАВНИТЕЛЬНАЯ СТАТИСТИКА ПО АЛГОРИТМАМ");
+  console.log("=".repeat(60));
 
-  console.log("\n🏆 ТОП-5 ЛУЧШИХ РЕЗУЛЬТАТОВ СЖАТИЯ:");
-  bestCompression.forEach((result, index) => {
-    console.log(
-      `${index + 1}. ${result.testName}: ${result.compressionRatio}% (${
-        result.encoderType
-      })`
+  const algorithmStats = {};
+
+  encoders.forEach((encoder) => {
+    const encoderResults = results.filter(
+      (r) => r.encoderType === encoder && r.isCorrect
     );
+    if (encoderResults.length > 0) {
+      const compressionRatios = encoderResults.map((r) => r.compressionRatio);
+      algorithmStats[encoder] = {
+        name: encoder.toUpperCase(),
+        totalTests: encoderResults.length,
+        successRate: (
+          (encoderResults.length /
+            results.filter((r) => r.encoderType === encoder).length) *
+          100
+        ).toFixed(1),
+        avgCompression: (
+          compressionRatios.reduce((sum, ratio) => sum + ratio, 0) /
+          compressionRatios.length
+        ).toFixed(1),
+        minCompression: Math.min(...compressionRatios).toFixed(1),
+        maxCompression: Math.max(...compressionRatios).toFixed(1),
+        results: encoderResults,
+      };
+    }
+  });
+
+  const sortedAlgorithms = Object.entries(algorithmStats).sort(
+    ([, a], [, b]) =>
+      parseFloat(b.avgCompression) - parseFloat(a.avgCompression)
+  );
+
+  console.log("\n📊 Общая производительность алгоритмов:");
+  sortedAlgorithms.forEach(([key, stats], index) => {
+    const medal =
+      index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "  ";
+    console.log(`${medal} ${stats.name}:`);
+    console.log(
+      `   • Успешных тестов: ${stats.totalTests} (${stats.successRate}%)`
+    );
+    console.log(`   • Среднее сжатие: ${stats.avgCompression}%`);
+    console.log(
+      `   • Диапазон: ${stats.minCompression}% - ${stats.maxCompression}%`
+    );
+  });
+
+  console.log("\n🎯 Лучшие результаты каждого алгоритма:");
+  sortedAlgorithms.forEach(([key, stats]) => {
+    const bestResult = stats.results.sort(
+      (a, b) => b.compressionRatio - a.compressionRatio
+    )[0];
+    console.log(
+      `${stats.name}: ${
+        bestResult.compressionRatio
+      }% (${bestResult.testName.replace(` (${key})`, "")})`
+    );
+  });
+
+  console.log("\n🔍 Анализ эффективности по типам тестов:");
+  const testTypes = [
+    "Одно число",
+    "Два числа",
+    "Три числа",
+    "Все однозначные",
+    "Все двузначные",
+    "Все трёхзначные",
+    "Последовательные",
+    "Случайные",
+  ];
+
+  testTypes.forEach((testType) => {
+    const typeResults = results.filter(
+      (r) =>
+        r.isCorrect &&
+        (r.testName.includes(testType) ||
+          (testType === "Случайные" && r.testName.includes("Случайные")) ||
+          (testType === "Последовательные" &&
+            r.testName.includes("Последовательные")))
+    );
+
+    if (typeResults.length > 0) {
+      const byAlgorithm = {};
+      typeResults.forEach((result) => {
+        if (!byAlgorithm[result.encoderType]) {
+          byAlgorithm[result.encoderType] = [];
+        }
+        byAlgorithm[result.encoderType].push(result.compressionRatio);
+      });
+
+      const avgByAlgorithm = Object.entries(byAlgorithm)
+        .map(([algo, ratios]) => ({
+          algo: algo.toUpperCase(),
+          avg: (ratios.reduce((sum, r) => sum + r, 0) / ratios.length).toFixed(
+            1
+          ),
+        }))
+        .sort((a, b) => parseFloat(b.avg) - parseFloat(a.avg));
+
+      if (avgByAlgorithm.length > 0) {
+        console.log(
+          `  ${testType}: ${avgByAlgorithm
+            .map((a) => `${a.algo}(${a.avg}%)`)
+            .join(", ")}`
+        );
+      }
+    }
   });
 }
 
 module.exports = {
   runTest,
   printStatistics,
+  printComparativeStatistics,
 };
