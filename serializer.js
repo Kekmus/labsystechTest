@@ -35,11 +35,14 @@ function serialize(numbers, encoderType = "runLength", maxNumber = MAX_NUMBER) {
   }
 
   const encoded = encoder.encode(bitMask);
-  console.log(`encoded with ${encoderType}:`, encoded);
   return encoded;
 }
 
-function deserialize(encoded, encoderType = "runLength", maxNumber = MAX_NUMBER) {
+function deserialize(
+  encoded,
+  encoderType = "runLength",
+  maxNumber = MAX_NUMBER
+) {
   const encoder = encoders[encoderType];
   if (!encoder) {
     throw new Error(`Unknown encoder type: ${encoderType}`);

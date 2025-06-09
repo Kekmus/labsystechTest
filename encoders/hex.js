@@ -16,7 +16,6 @@ const hex = {
       hexString += parseInt(nibble, 2).toString(16);
     }
 
-    console.log("hex encoded:", hexString);
     return hexString;
   },
 
